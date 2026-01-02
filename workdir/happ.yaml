@@ -1,0 +1,17 @@
+---
+manifest_version: "0"
+name: sharefeed
+description: Share URLs and content with family and friends
+roles:
+  - name: sharefeed
+    provisioning:
+      strategy: create
+      deferred: false
+    dna:
+      path: "../dnas/sharefeed/workdir/sharefeed.dna"
+      modifiers:
+        network_seed: ~
+        properties: ~
+        quantum_time: ~
+      version: ~
+      clone_limit: 0

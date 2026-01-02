@@ -29,6 +29,7 @@ Technologically this project is a combo browser extension tool and holochain app
 
 - **Check LESSONS_LEARNED.md** before any serialization work - failed solutions are archived there
 - **Use ../holochain/ as canonical reference**, not web searches (docs may be outdated)
+- **TEST BEFORE COMMIT**, always run tests and ensure they pass before suggesting that we commit.
 - **Automated tests first**, manual browser testing only for final verification
 
 ---

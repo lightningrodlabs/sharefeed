@@ -1,5 +1,7 @@
 # ShareFeed UI Testing Guide
 
+> **Note:** For full project testing (including Holochain integration tests), see the root [TESTING.md](../TESTING.md).
+
 ## Automated Tests
 
 ### Running Tests

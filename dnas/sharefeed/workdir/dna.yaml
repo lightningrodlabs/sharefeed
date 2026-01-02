@@ -1,0 +1,15 @@
+---
+manifest_version: "0"
+name: sharefeed
+integrity:
+  network_seed: ~
+  properties: ~
+  zomes:
+    - name: sharefeed_integrity
+      path: ../../../target/wasm32-unknown-unknown/release/sharefeed_integrity.wasm
+coordinator:
+  zomes:
+    - name: sharefeed
+      path: ../../../target/wasm32-unknown-unknown/release/sharefeed.wasm
+      dependencies:
+        - name: sharefeed_integrity

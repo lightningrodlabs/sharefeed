@@ -27,6 +27,7 @@ npm-debug.log*
 
 # Holochain (Phase 3+)
 target/
+Cargo.lock
 *.happ
 *.webhapp
 *.dna

@@ -1,0 +1,16 @@
+[package]
+name = "sharefeed_tests"
+version = "0.0.1"
+edition = "2021"
+publish = false
+
+[lib]
+path = "src/lib.rs"
+doctest = false
+
+[dependencies]
+holochain = { path = "../../holochain/crates/holochain", features = ["sweettest"] }
+holochain_types = { path = "../../holochain/crates/holochain_types" }
+holochain_trace = { path = "../../holochain/crates/holochain_trace" }
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }

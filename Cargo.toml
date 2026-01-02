@@ -1,0 +1,21 @@
+[profile.dev]
+opt-level = "z"
+
+[profile.release]
+opt-level = "z"
+
+[workspace]
+members = ["dnas/*/zomes/coordinator/*", "dnas/*/zomes/integrity/*", "tests"]
+resolver = "2"
+
+[workspace.dependencies]
+hdi = "0.7.0"
+hdk = "0.6.0"
+serde = "1"
+holochain_serialized_bytes = "0.0.56"
+
+[workspace.dependencies.sharefeed]
+path = "dnas/sharefeed/zomes/coordinator/sharefeed"
+
+[workspace.dependencies.sharefeed_integrity]
+path = "dnas/sharefeed/zomes/integrity/sharefeed"

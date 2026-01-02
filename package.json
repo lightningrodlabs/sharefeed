@@ -1,0 +1,26 @@
+{
+  "name": "sharefeed",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ShareFeed - Share URLs with family and friends via Holochain",
+  "type": "module",
+  "scripts": {
+    "test": "npm run test:unit && npm run test:integration",
+    "test:unit": "npm run test:extension && npm run test:ui",
+    "test:extension": "cd extension && npm run test:run",
+    "test:ui": "cd ui && npm run test:run",
+    "test:integration": "cargo test -p sharefeed_tests",
+    "build": "npm run build:extension && npm run build:ui && npm run build:happ",
+    "build:extension": "cd extension && npm run build",
+    "build:ui": "cd ui && npm run build",
+    "build:happ": "npm run build:zomes && npm run pack:dna && npm run pack:happ",
+    "build:zomes": "RUSTFLAGS='--cfg getrandom_backend=\"custom\"' cargo build --release --target wasm32-unknown-unknown -p sharefeed_integrity -p sharefeed",
+    "pack:dna": "hc dna pack dnas/sharefeed/workdir",
+    "pack:happ": "hc app pack workdir"
+  },
+  "devDependencies": {},
+  "workspaces": [
+    "extension",
+    "ui"
+  ]
+}
