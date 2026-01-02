@@ -1,17 +1,85 @@
 import { browser } from '$app/environment';
-import type { ShareItem, StorageAdapter, GetSharesOptions } from '$lib/types';
-import { DemoAdapter } from '$lib/adapters';
+import {
+  connect,
+  getClient,
+  isConnected,
+  type ShareFeedClient,
+  type ShareItem as HcShareItem,
+  type ShareItemInfo,
+  type ActionHash,
+} from '$lib/holochain';
+import { encodeHashToBase64 } from '@holochain/client';
+
+/**
+ * UI-friendly share item type.
+ * Converts Holochain types to more usable format.
+ */
+export interface ShareItem {
+  id: string;
+  actionHash: ActionHash;
+  url: string;
+  title: string;
+  description?: string;
+  selection?: string;
+  favicon?: string;
+  thumbnail?: string;
+  sharedAt: number;
+  sharedBy: string;
+  sharedByName?: string;
+  tags: string[];
+}
+
+/**
+ * Convert Holochain ShareItemInfo to UI ShareItem
+ */
+function toShareItem(info: ShareItemInfo): ShareItem {
+  const timestampMs =
+    typeof info.created_at === 'number'
+      ? info.created_at / 1000 // Holochain timestamps are in microseconds
+      : Number(info.created_at) / 1000;
+
+  return {
+    id: encodeHashToBase64(info.action_hash),
+    actionHash: info.action_hash,
+    url: info.share_item.url,
+    title: info.share_item.title,
+    description: info.share_item.description ?? undefined,
+    selection: info.share_item.selection ?? undefined,
+    favicon: info.share_item.favicon ?? undefined,
+    thumbnail: info.share_item.thumbnail ?? undefined,
+    sharedAt: timestampMs,
+    sharedBy: encodeHashToBase64(info.author),
+    tags: info.share_item.tags,
+  };
+}
+
+/**
+ * Convert UI ShareItem input to Holochain ShareItem
+ */
+function toHcShareItem(
+  share: Omit<ShareItem, 'id' | 'actionHash' | 'sharedAt' | 'sharedBy'>
+): HcShareItem {
+  return {
+    url: share.url,
+    title: share.title,
+    description: share.description ?? null,
+    selection: share.selection ?? null,
+    favicon: share.favicon ?? null,
+    thumbnail: share.thumbnail ?? null,
+    tags: share.tags ?? [],
+  };
+}
 
 /**
  * Reactive shares state using Svelte 5 runes.
- * Connects to a storage adapter and keeps shares in sync.
+ * Connects directly to Holochain conductor.
  */
 class SharesStore {
   private _shares = $state<ShareItem[]>([]);
   private _loading = $state(true);
   private _error = $state<string | null>(null);
-  private _adapter: StorageAdapter | null = null;
-  private _unsubscribe: (() => void) | null = null;
+  private _connected = $state(false);
+  private _client: ShareFeedClient | null = null;
 
   get shares(): ShareItem[] {
     return this._shares;
@@ -29,110 +97,111 @@ class SharesStore {
     return !this._loading && this._shares.length === 0;
   }
 
-  /**
-   * Initialize the store with a storage adapter.
-   */
-  async init(adapter: StorageAdapter): Promise<void> {
-    // Disconnect from previous adapter if any
-    await this.disconnect();
+  get connected(): boolean {
+    return this._connected;
+  }
 
-    this._adapter = adapter;
+  /**
+   * Initialize the store by connecting to Holochain.
+   */
+  async init(): Promise<void> {
+    if (!browser) return;
+
     this._loading = true;
     this._error = null;
 
     try {
-      await adapter.connect();
-
-      // Subscribe to updates
-      this._unsubscribe = adapter.subscribeToShares((shares) => {
-        this._shares = shares;
-      });
+      this._client = await connect();
+      this._connected = true;
 
       // Load initial shares
-      this._shares = await adapter.getShares();
+      await this.refresh();
     } catch (err) {
-      this._error = err instanceof Error ? err.message : 'Failed to connect';
+      this._error = err instanceof Error ? err.message : 'Failed to connect to Holochain';
       console.error('Failed to initialize shares store:', err);
+      this._connected = false;
     } finally {
       this._loading = false;
     }
   }
 
   /**
-   * Disconnect from the current adapter.
+   * Refresh shares from Holochain.
    */
-  async disconnect(): Promise<void> {
-    if (this._unsubscribe) {
-      this._unsubscribe();
-      this._unsubscribe = null;
+  async refresh(): Promise<void> {
+    if (!this._client) {
+      // Try to get existing client
+      this._client = getClient();
+      if (!this._client) return;
     }
-    if (this._adapter) {
-      await this._adapter.disconnect();
-      this._adapter = null;
-    }
-  }
-
-  /**
-   * Refresh shares from the adapter.
-   */
-  async refresh(options?: GetSharesOptions): Promise<void> {
-    if (!this._adapter) return;
 
     this._loading = true;
     this._error = null;
 
     try {
-      this._shares = await this._adapter.getShares(options);
+      const shareInfos = await this._client.getRecentShares();
+      this._shares = shareInfos.map(toShareItem);
     } catch (err) {
       this._error = err instanceof Error ? err.message : 'Failed to load shares';
+      console.error('Failed to refresh shares:', err);
     } finally {
       this._loading = false;
     }
   }
 
   /**
-   * Load more shares for pagination.
+   * Create a new share item.
    */
-  async loadMore(limit: number = 10): Promise<void> {
-    if (!this._adapter || this._shares.length === 0) return;
+  async createShare(
+    share: Omit<ShareItem, 'id' | 'actionHash' | 'sharedAt' | 'sharedBy'>
+  ): Promise<ShareItem | null> {
+    if (!this._client) return null;
 
-    const lastShare = this._shares[this._shares.length - 1];
-    const moreShares = await this._adapter.getShares({
-      after: lastShare.sharedAt,
-      limit,
-    });
-
-    if (moreShares.length > 0) {
-      this._shares = [...this._shares, ...moreShares];
+    try {
+      const record = await this._client.createShareItem(toHcShareItem(share));
+      // Refresh to get the new share with all metadata
+      await this.refresh();
+      // Return the newly created share (should be first in the sorted list)
+      return this._shares[0] ?? null;
+    } catch (err) {
+      this._error = err instanceof Error ? err.message : 'Failed to create share';
+      console.error('Failed to create share:', err);
+      return null;
     }
   }
 
   /**
-   * Delete a share (if adapter supports it).
+   * Delete a share item.
    */
   async deleteShare(id: string): Promise<void> {
-    if (!this._adapter?.deleteShare) return;
+    if (!this._client) return;
+
+    const share = this._shares.find((s) => s.id === id);
+    if (!share) return;
 
     try {
-      await this._adapter.deleteShare(id);
+      await this._client.deleteShareItem(share.actionHash);
       this._shares = this._shares.filter((s) => s.id !== id);
     } catch (err) {
-      this._error = err instanceof Error ? err.message : 'Failed to delete';
+      this._error = err instanceof Error ? err.message : 'Failed to delete share';
+      console.error('Failed to delete share:', err);
     }
+  }
+
+  /**
+   * Check if connected to Holochain.
+   */
+  isConnected(): boolean {
+    return isConnected();
   }
 }
 
 export const sharesStore = new SharesStore();
 
 /**
- * Initialize the shares store with the appropriate adapter.
+ * Initialize the shares store.
  * Call this from +layout.svelte or +page.svelte on mount.
  */
 export async function initSharesStore(): Promise<void> {
-  if (!browser) return;
-
-  // For now, use demo adapter for easy testing
-  // Later this will detect Holochain vs local file
-  const adapter = new DemoAdapter();
-  await sharesStore.init(adapter);
+  await sharesStore.init();
 }

@@ -4,8 +4,8 @@ export * from './components';
 // Stores
 export * from './stores';
 
-// Adapters
-export * from './adapters';
+// Holochain client
+export * from './holochain';
 
 // Types
 export * from './types';

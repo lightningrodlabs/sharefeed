@@ -16,9 +16,18 @@
     "build:happ": "npm run build:zomes && npm run pack:dna && npm run pack:happ",
     "build:zomes": "RUSTFLAGS='--cfg getrandom_backend=\"custom\"' cargo build --release --target wasm32-unknown-unknown -p sharefeed_integrity -p sharefeed",
     "pack:dna": "hc dna pack dnas/sharefeed/workdir",
-    "pack:happ": "hc app pack workdir"
+    "pack:happ": "hc app pack workdir",
+    "pack:ui": "cd ui && rm -f dist.zip && npm run build && cd dist && zip -r ../dist.zip .",
+    "pack:webhapp": "npm run pack:ui && npm run pack:happ && hc web-app pack workdir",
+    "start": "AGENTS=1 npm run network",
+    "start:2": "AGENTS=2 npm run network",
+    "network": "hc s clean && npm run build:happ && concurrently -k \"UI_PORT=1420 npm run -w ui dev\" \"npm run launch\"",
+    "launch": "hc-spin --ui-port 1420 -n $AGENTS workdir/sharefeed.happ"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "@holochain/hc-spin": "^0.600.0",
+    "concurrently": "^8.2.2"
+  },
   "workspaces": [
     "extension",
     "ui"

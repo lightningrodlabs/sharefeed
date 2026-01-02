@@ -1,0 +1,7 @@
+---
+manifest_version: "0"
+name: sharefeed
+ui:
+  path: "../ui/dist.zip"
+happ:
+  path: "./sharefeed.happ"
