@@ -27,10 +27,11 @@ export interface HolochainSettings {
   enabled: boolean;
 }
 
+// Fixed ports matching sharefeed-desktop configuration
 const DEFAULT_SETTINGS: HolochainSettings = {
-  adminPort: 0,
-  appPort: 0,
-  enabled: false, // Disabled by default - user must configure ports first
+  adminPort: 21211,
+  appPort: 21212,
+  enabled: true, // Enabled by default - connects to fixed ports
 };
 
 /**
