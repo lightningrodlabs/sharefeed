@@ -23,7 +23,9 @@
     "network": "hc s clean && npm run build:happ && concurrently -k \"UI_PORT=1420 npm run -w ui dev\" \"npm run launch\"",
     "launch": "hc-spin --ui-port 1420 -n $AGENTS workdir/sharefeed.happ",
     "start:moss": "UI_PORT=1420 npm run launch:moss",
-    "launch:moss": "concurrently \"npm run -w ui dev\" \"sleep 1 && weave --agent-idx 1 --dev-config we_dev/config.ts\" \"sleep 10 && weave --agent-idx 2 --dev-config we_dev/config.ts\""
+    "launch:moss": "concurrently \"npm run -w ui dev\" \"sleep 1 && weave --agent-idx 1 --dev-config we_dev/config.ts\" \"sleep 10 && weave --agent-idx 2 --dev-config we_dev/config.ts\"",
+    "package": "npm run pack:webhapp",
+    "deploy:desktop": "npm run package && cp workdir/sharefeed.webhapp ../sharefeed-desktop/pouch/"
   },
   "devDependencies": {
     "@holochain/hc-spin": "^0.600.0",
