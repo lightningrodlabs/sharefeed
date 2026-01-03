@@ -2,6 +2,7 @@
   "name": "sharefeed",
   "version": "0.1.0",
   "private": true,
+  "license": "CAL-1.0",
   "description": "ShareFeed - Share URLs with family and friends via Holochain",
   "scripts": {
     "test": "npm run test:unit && npm run test:integration",
@@ -25,6 +26,7 @@
     "start:moss": "UI_PORT=1420 npm run launch:moss",
     "launch:moss": "concurrently \"npm run -w ui dev\" \"sleep 1 && weave --agent-idx 1 --dev-config we_dev/config.ts\" \"sleep 10 && weave --agent-idx 2 --dev-config we_dev/config.ts\"",
     "package": "npm run pack:webhapp",
+    "package:extension": "npm run build:extension && cd extension/dist && zip -r ../../sharefeed-extension.zip .",
     "deploy:desktop": "npm run package && cp workdir/sharefeed.webhapp ../sharefeed-desktop/pouch/"
   },
   "devDependencies": {
