@@ -404,9 +404,30 @@ export async function createShare(share: ShareItem): Promise<void> {
 
 ## Phase 7: Kangaroo Desktop Deployment
 
-### Configuration
+**Strategy:** Clone kangaroo-electron as separate repo (sharefeed-desktop)
+
+### Directory Structure
+```
+~/code/metacurrency/holochain/
+├── sharefeed/              # This repo - happ + extension
+└── sharefeed-desktop/      # Cloned kangaroo - desktop wrapper
+    ├── kangaroo.config.ts
+    ├── src/main/holochainManager.ts  # Modified for port discovery
+    ├── pouch/sharefeed.webhapp
+    └── ...
+```
+
+### 7.1 Clone Kangaroo
+```bash
+cd ~/code/metacurrency/holochain/
+git clone https://github.com/holochain/kangaroo-electron.git sharefeed-desktop
+cd sharefeed-desktop
+yarn install
+```
+
+### 7.2 Configure for ShareFeed
+Update `kangaroo.config.ts`:
 ```typescript
-// desktop/kangaroo.config.ts
 export default defineConfig({
   appId: 'org.metacurrency.sharefeed',
   productName: 'ShareFeed',
@@ -415,42 +436,67 @@ export default defineConfig({
   passwordMode: 'password-optional',
   bootstrapUrl: 'https://dev-test-bootstrap2.holochain.org/',
   signalUrl: 'wss://dev-test-bootstrap2.holochain.org/',
-  // ...
 });
 ```
 
-### Directory Structure
-```
-sharefeed/
-├── desktop/
-│   ├── kangaroo.config.ts
-│   ├── package.json
-│   ├── pouch/sharefeed.webhapp
-│   └── src/main/, preload/, renderer/
+### 7.3 Add Port Discovery (File-Based)
+Modify `src/main/holochainManager.ts` after port allocation to write ports to JSON file:
+```typescript
+const portInfo = {
+  adminPort: this.adminPort,
+  appPort: this.appPort,
+  appId: this.installedAppId,
+  timestamp: Date.now()
+};
+const portFile = path.join(app.getPath('userData'), 'conductor-ports.json');
+fs.writeFileSync(portFile, JSON.stringify(portInfo, null, 2));
 ```
 
-### Implementation Steps
-1. Copy/adapt kangaroo-electron template to desktop/
-2. Update kangaroo.config.ts for ShareFeed
-3. Build webhapp and place in pouch/
-4. Test with `yarn dev`
-5. Build distributables: `yarn build:linux`, etc.
-6. Test extension communication with desktop app
+Port file locations by OS:
+- Linux: `~/.config/ShareFeed/conductor-ports.json`
+- macOS: `~/Library/Application Support/ShareFeed/conductor-ports.json`
+- Windows: `%APPDATA%/ShareFeed/conductor-ports.json`
 
-### Key Reference File
+### 7.4 Build Scripts
+Add to sharefeed/package.json:
+```json
+{
+  "scripts": {
+    "package": "npm run build:happ && npm run package -w ui && hc web-app pack workdir",
+    "deploy:desktop": "npm run package && cp workdir/sharefeed.webhapp ../sharefeed-desktop/pouch/"
+  }
+}
+```
+
+### 7.5 Testing Workflow
+1. Build and deploy: `npm run deploy:desktop`
+2. Start desktop: `cd ../sharefeed-desktop && yarn dev`
+3. Verify ports file is written
+4. Build distributables: `yarn build:linux`, etc.
+
+### Key Reference Files
 - `../kangaroo-electron/kangaroo.config.ts`
+- `../kangaroo-electron/src/main/holochainManager.ts`
 
 ---
 
-## Phase 8: Extension + Moss Integration (DEFERRED)
+## Phase 8: Extension + Desktop/Moss Integration (DEFERRED)
 
 ### Overview
-Connect the browser extension to the Moss-hosted conductor so shares from the extension appear in the Moss UI.
+Connect the browser extension to locally running conductor (Kangaroo or Moss) so shares from the extension appear in the UI.
 
-### 8.1 Port Discovery
-- Moss runs conductor on dynamic ports
-- Extension needs to discover the app websocket port
-- Options: Native messaging, localhost HTTP endpoint, manual config
+### 8.1 Port Discovery (Extension Side)
+Implement port discovery module that reads from conductor-ports.json:
+```typescript
+// extension/src/holochain/port-discovery.ts
+async function discoverPorts(): Promise<{adminPort: number, appPort: number} | null> {
+  // Detect OS via chrome.runtime.getPlatformInfo()
+  // Read conductor-ports.json from appropriate location
+  // Return ports or null if not found
+}
+```
+
+Works with both Kangaroo (Phase 7) and Moss conductors.
 
 ### 8.2 Authentication
 - Moss manages app tokens for security
