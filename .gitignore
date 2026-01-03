@@ -31,8 +31,12 @@ Cargo.lock
 *.happ
 *.webhapp
 *.dna
+.hc
 .hc/
+.hc_live_*
 
 # Test artifacts
 coverage/
 .nyc_output/
+test-results/
+**/test-results/
