@@ -9,8 +9,8 @@ path = "src/lib.rs"
 doctest = false
 
 [dependencies]
-holochain = { path = "../../holochain/crates/holochain", features = ["sweettest"] }
-holochain_types = { path = "../../holochain/crates/holochain_types" }
-holochain_trace = { path = "../../holochain/crates/holochain_trace" }
+holochain = { version = "0.6.0", features = ["sweettest"] }
+holochain_types = "0.6.0"
+holochain_trace = "0.5.0"
 tokio = { version = "1", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
