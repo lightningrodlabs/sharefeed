@@ -5,10 +5,16 @@ integrity:
   network_seed: ~
   properties: ~
   zomes:
+    - name: profiles_integrity
+      path: ../../../target/wasm32-unknown-unknown/release/profiles_integrity.wasm
     - name: sharefeed_integrity
       path: ../../../target/wasm32-unknown-unknown/release/sharefeed_integrity.wasm
 coordinator:
   zomes:
+    - name: profiles
+      path: ../../../target/wasm32-unknown-unknown/release/profiles.wasm
+      dependencies:
+        - name: profiles_integrity
     - name: sharefeed
       path: ../../../target/wasm32-unknown-unknown/release/sharefeed.wasm
       dependencies:

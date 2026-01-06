@@ -167,7 +167,7 @@
       </div>
 
       <footer class="panel-footer">
-        <button type="button" class="reset-button" on:click={handleReset}>
+        <button type="button" class="btn btn-secondary btn-block" on:click={handleReset}>
           Reset to Defaults
         </button>
       </footer>
@@ -407,30 +407,6 @@
   .panel-footer {
     padding: 16px 24px;
     border-top: 1px solid var(--panel-border);
-  }
-
-  .reset-button {
-    width: 100%;
-    padding: 12px;
-    font-size: 16px;
-    font-weight: 500;
-    color: var(--text-secondary);
-    background: none;
-    border: 2px solid var(--panel-border);
-    border-radius: 8px;
-    cursor: pointer;
-    transition: background 0.2s, border-color 0.2s, color 0.2s;
-  }
-
-  .reset-button:hover {
-    background: #f3f4f6;
-    border-color: var(--text-secondary);
-    color: var(--text-primary);
-  }
-
-  .reset-button:focus-visible {
-    outline: 3px solid var(--primary-color);
-    outline-offset: 2px;
   }
 
   /* Touch-friendly sizes */

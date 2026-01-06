@@ -1,9 +1,22 @@
 <script lang="ts">
   import type { ShareItem } from '$lib/types';
-  import { settingsStore } from '$lib/stores';
+  import { settingsStore, profilesStore } from '$lib/stores';
+  import { decodeHashFromBase64 } from '@holochain/client';
+  import '@holochain-open-dev/profiles/dist/elements/agent-avatar.js';
 
   export let share: ShareItem;
   export let onDelete: ((id: string) => void) | undefined = undefined;
+
+  // Decode the author's agent pub key from base64
+  $: authorPubKey = share.sharedBy ? decodeHashFromBase64(share.sharedBy) : null;
+
+  // Get profile store for the author (returns an AsyncReadable)
+  $: authorProfileStore = authorPubKey && $profilesStore?.profiles?.get(authorPubKey);
+  // Subscribe to the profile store
+  $: authorProfile = authorProfileStore ? $authorProfileStore : null;
+  $: authorNickname = authorProfile?.status === 'complete' && authorProfile?.value?.entry
+    ? authorProfile.value.entry.nickname
+    : share.sharedBy.slice(0, 8) + '...';
 
   // Subscribe to settings store values
   $: fontSize = $settingsStore.fontSize;
@@ -109,10 +122,18 @@
         </blockquote>
       {/if}
 
-      {#if share.sharedByName}
-        <footer class="card-footer">
-          <span class="shared-by">Shared by {share.sharedByName}</span>
-        </footer>
+      {#if share.sharedBy}
+      <footer class="card-footer">
+        <div class="shared-by">
+          <agent-avatar
+            size="24"
+            agent-pub-key={share.sharedBy}
+            disable-tooltip={true}
+            disable-copy={true}
+          ></agent-avatar>
+          <span class="author-name">{authorNickname}</span>
+        </div>
+      </footer>
       {/if}
     </div>
   </a>
@@ -276,13 +297,26 @@
   }
 
   .card-footer {
-    padding-top: 8px;
+    padding-top: 12px;
+    margin-top: 4px;
     border-top: 1px solid var(--card-border);
   }
 
   .shared-by {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     font-size: calc(var(--font-size) * 0.85);
     color: var(--text-muted);
+  }
+
+  .author-name {
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+
+  agent-avatar {
+    --agent-avatar-size: 24px;
   }
 
   .delete-button {

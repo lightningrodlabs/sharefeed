@@ -14,7 +14,7 @@
     "build:extension": "cd extension && npm run build",
     "build:ui": "cd ui && npm run build",
     "build:happ": "npm run build:zomes && npm run pack:dna && npm run pack:happ",
-    "build:zomes": "RUSTFLAGS='--cfg getrandom_backend=\"custom\"' cargo build --release --target wasm32-unknown-unknown -p sharefeed_integrity -p sharefeed",
+    "build:zomes": "RUSTFLAGS='--cfg getrandom_backend=\"custom\"' cargo build --release --target wasm32-unknown-unknown -p profiles_integrity -p profiles -p sharefeed_integrity -p sharefeed",
     "pack:dna": "hc dna pack dnas/sharefeed/workdir",
     "pack:happ": "hc app pack workdir",
     "pack:ui": "cd ui && rm -f dist.zip && npm run build && cd dist && zip -r ../dist.zip .",

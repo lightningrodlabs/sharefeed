@@ -1,10 +1,12 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { FeedList, AccessibilityPanel, ShareForm } from '$lib/components';
-  import { sharesStore, settingsStore, initSharesStore } from '$lib/stores';
+  import { FeedList, AccessibilityPanel, ShareForm, ProfileButton, ProfileDialog } from '$lib/components';
+  import { sharesStore, settingsStore, profilesStore, initSharesStore } from '$lib/stores';
+  import '@holochain-open-dev/profiles/dist/elements/profiles-context.js';
 
   let showSettings = false;
   let showShareForm = false;
+  let showProfileDialog = false;
 
   // Subscribe to settings store values
   $: fontSize = $settingsStore.fontSize;
@@ -24,6 +26,8 @@
   }
 </script>
 
+{#if $profilesStore}
+<profiles-context store={$profilesStore}>
 <div
   class="app-container"
   class:high-contrast={highContrast}
@@ -37,6 +41,7 @@
         <p class="tagline">Links from your family and friends</p>
       </div>
       <div class="header-actions">
+        <ProfileButton on:click={() => showProfileDialog = true} />
         <button
           type="button"
           class="icon-button share-button"
@@ -82,8 +87,16 @@
 
     <AccessibilityPanel bind:open={showSettings} on:close={() => showSettings = false} />
     <ShareForm bind:open={showShareForm} on:created={handleShareCreated} on:cancel={() => showShareForm = false} />
+    <ProfileDialog bind:open={showProfileDialog} on:close={() => showProfileDialog = false} />
   </div>
 </div>
+</profiles-context>
+{:else}
+<div class="loading-container">
+  <div class="spinner"></div>
+  <p>Connecting to Holochain...</p>
+</div>
+{/if}
 
 <style>
   .app-container {
@@ -224,5 +237,35 @@
     .main-content {
       padding: 32px;
     }
+  }
+
+  .loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    color: #6b7280;
+  }
+
+  .loading-container .spinner {
+    width: 48px;
+    height: 48px;
+    border: 4px solid #e5e7eb;
+    border-top-color: #6366f1;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 16px;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .loading-container p {
+    margin: 0;
+    font-size: 16px;
   }
 </style>

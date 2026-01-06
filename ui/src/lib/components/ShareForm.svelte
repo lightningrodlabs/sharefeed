@@ -123,10 +123,10 @@
         {/if}
 
         <div class="actions">
-          <button type="button" class="cancel-btn" on:click={handleClose} disabled={submitting}>
+          <button type="button" class="btn btn-secondary" on:click={handleClose} disabled={submitting}>
             Cancel
           </button>
-          <button type="submit" class="submit-btn" disabled={submitting}>
+          <button type="submit" class="btn btn-primary" disabled={submitting}>
             {submitting ? 'Sharing...' : 'Share'}
           </button>
         </div>
@@ -240,46 +240,6 @@
     margin-top: 20px;
   }
 
-  button {
-    padding: 12px 24px;
-    font-size: 16px;
-    font-weight: 600;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: background 0.2s, border-color 0.2s;
-    min-width: 100px;
-  }
-
-  .cancel-btn {
-    background: var(--bg);
-    color: var(--text);
-    border: 2px solid var(--border);
-  }
-
-  .cancel-btn:hover:not(:disabled) {
-    border-color: var(--text-muted);
-  }
-
-  .submit-btn {
-    background: var(--primary);
-    color: white;
-    border: none;
-  }
-
-  .submit-btn:hover:not(:disabled) {
-    background: var(--primary-hover);
-  }
-
-  button:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  button:focus-visible {
-    outline: 3px solid var(--primary);
-    outline-offset: 2px;
-  }
-
   /* Responsive */
   @media (max-width: 480px) {
     .modal {
@@ -290,7 +250,7 @@
       flex-direction: column-reverse;
     }
 
-    button {
+    .actions .btn {
       width: 100%;
     }
   }

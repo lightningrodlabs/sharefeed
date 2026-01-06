@@ -15,6 +15,7 @@ import {
 import { WeaveClient, isWeaveContext, initializeHotReload } from '@theweave/api';
 import { ShareFeedClient } from './client';
 import { appletServices } from '../../we';
+import { initProfilesStore } from '$lib/stores/profiles';
 
 export const APP_ID = 'sharefeed';
 
@@ -109,6 +110,10 @@ export async function connect(options: ConnectionOptions = {}): Promise<ShareFee
   }
 
   shareFeedClient = new ShareFeedClient(client);
+
+  // Initialize ProfilesStore with the connected client
+  initProfilesStore(client, 'sharefeed');
+
   return shareFeedClient;
 }
 

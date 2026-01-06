@@ -126,7 +126,16 @@
       "Bash(timeout 180 yarn build:linux:*)",
       "Bash(identify:*)",
       "Bash(convert:*)",
-      "Bash(npm run deploy:desktop:*)"
+      "Bash(npm run deploy:desktop:*)",
+      "Bash(shasum:*)",
+      "Bash(cargo search:*)",
+      "Bash(gh release list:*)",
+      "Bash(yarn typecheck:*)",
+      "Bash(gh run list:*)",
+      "Bash(yarn dev)",
+      "Bash(yarn build:linux:*)",
+      "Bash(npm run build:happ:*)",
+      "Bash(timeout 20 npm run dev)"
     ]
   }
 }

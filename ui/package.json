@@ -12,6 +12,9 @@
   },
   "dependencies": {
     "@holochain/client": "^0.20.0",
+    "@holochain-open-dev/profiles": "^0.600.0",
+    "@holochain-open-dev/stores": "^0.600.0",
+    "@holochain-open-dev/elements": "^0.600.0",
     "@msgpack/msgpack": "^2.8.0",
     "@theweave/api": "^0.6.3",
     "libsodium-wrappers": "0.7.15"

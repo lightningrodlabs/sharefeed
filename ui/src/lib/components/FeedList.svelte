@@ -42,7 +42,7 @@
         <line x1="12" y1="16" x2="12.01" y2="16" />
       </svg>
       <p>{error}</p>
-      <button type="button" on:click={handleRefresh} class="retry-button">
+      <button type="button" on:click={handleRefresh} class="btn btn-primary">
         Try Again
       </button>
     </div>
@@ -125,27 +125,6 @@
   .error-state p {
     margin: 0 0 16px 0;
     font-size: 18px;
-  }
-
-  .retry-button {
-    padding: 12px 24px;
-    font-size: 16px;
-    font-weight: 600;
-    color: white;
-    background: var(--primary-color);
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: background 0.2s;
-  }
-
-  .retry-button:hover {
-    background: #4f46e5;
-  }
-
-  .retry-button:focus-visible {
-    outline: 3px solid var(--primary-color);
-    outline-offset: 2px;
   }
 
   .empty-state svg {

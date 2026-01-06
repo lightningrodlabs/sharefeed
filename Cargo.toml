@@ -19,3 +19,9 @@ path = "dnas/sharefeed/zomes/coordinator/sharefeed"
 
 [workspace.dependencies.sharefeed_integrity]
 path = "dnas/sharefeed/zomes/integrity/sharefeed"
+
+[workspace.dependencies.profiles]
+path = "dnas/sharefeed/zomes/coordinator/profiles"
+
+[workspace.dependencies.profiles_integrity]
+path = "dnas/sharefeed/zomes/integrity/profiles"
