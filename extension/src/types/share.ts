@@ -55,6 +55,18 @@ export interface ConnectionStatus {
   holochainAvailable: boolean;
 }
 
+/**
+ * Network info for the extension (simplified version of UI Network type).
+ */
+export interface NetworkInfo {
+  /** Base64-encoded CellId string */
+  cellIdString: string;
+  /** Display name */
+  name: string;
+  /** Whether this is the active network */
+  isActive: boolean;
+}
+
 export type ExtensionMessage =
   | { type: 'GET_METADATA' }
   | { type: 'METADATA_RESPONSE'; payload: ShareMetadata }
@@ -70,7 +82,11 @@ export type ExtensionMessage =
   | { type: 'SET_STORAGE_MODE'; payload: StorageMode }
   | { type: 'STORAGE_MODE_SET'; payload: StorageMode }
   | { type: 'RESET_CONNECTION' }
-  | { type: 'CONNECTION_RESET' };
+  | { type: 'CONNECTION_RESET' }
+  | { type: 'GET_NETWORKS' }
+  | { type: 'NETWORKS_RESPONSE'; payload: NetworkInfo[] }
+  | { type: 'SET_ACTIVE_NETWORK'; payload: string }
+  | { type: 'ACTIVE_NETWORK_SET'; payload: string };
 
 /**
  * Context menu share context - indicates what was right-clicked.

@@ -68,7 +68,11 @@ export async function connect(options: ConnectionOptions = {}): Promise<ShareFee
     if (launcher) {
       // Production: use launcher API
       const appPort = await launcher.getAppPort();
-      const token = await launcher.getAppToken();
+      const launcherToken = await launcher.getAppToken();
+      // Convert Uint8Array to number[] if needed (AppWebsocketConnectionOptions expects number[])
+      const token = launcherToken instanceof Uint8Array
+        ? Array.from(launcherToken)
+        : launcherToken;
       const wsOptions: AppWebsocketConnectionOptions = {
         url: new URL(`ws://localhost:${appPort}`),
         token,
@@ -80,7 +84,7 @@ export async function connect(options: ConnectionOptions = {}): Promise<ShareFee
       const appPort = options.appPort || getEnvPort('VITE_APP_PORT') || 30000;
       const url = options.url || `ws://localhost:${appPort}`;
 
-      let token: Uint8Array | undefined;
+      let token: number[] | undefined;
 
       // If admin port is available, get auth token
       if (adminPort) {
@@ -88,7 +92,10 @@ export async function connect(options: ConnectionOptions = {}): Promise<ShareFee
         const tokenResp = await adminWs.issueAppAuthenticationToken({
           installed_app_id: APP_ID,
         });
-        token = tokenResp.token;
+        // Convert Uint8Array to number[] if needed (AppWebsocketConnectionOptions expects number[])
+        token = tokenResp.token instanceof Uint8Array
+          ? Array.from(tokenResp.token)
+          : tokenResp.token;
 
         // Authorize signing credentials
         const cellIds = await adminWs.listCellIds();

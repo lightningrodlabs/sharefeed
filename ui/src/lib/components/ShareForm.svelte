@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, tick } from 'svelte';
   import { sharesStore, settingsStore } from '$lib/stores';
 
   const dispatch = createEventDispatcher<{ created: void; cancel: void }>();
@@ -11,8 +11,47 @@
   let description = '';
   let submitting = false;
   let error: string | null = null;
+  let urlInput: HTMLInputElement;
 
   $: highContrast = $settingsStore.highContrast;
+
+  // When dialog opens, focus URL input and check clipboard for URL
+  $: if (open) {
+    handleDialogOpen();
+  }
+
+  async function handleDialogOpen(): Promise<void> {
+    // Wait for DOM to update
+    await tick();
+
+    // Focus the URL input
+    if (urlInput) {
+      urlInput.focus();
+    }
+
+    // Try to read clipboard and auto-paste if it's a URL
+    try {
+      const clipboardText = await navigator.clipboard.readText();
+      if (clipboardText && isValidUrl(clipboardText.trim())) {
+        url = clipboardText.trim();
+        // Select all text so user can easily replace if needed
+        if (urlInput) {
+          urlInput.select();
+        }
+      }
+    } catch {
+      // Clipboard access denied or not available - silently ignore
+    }
+  }
+
+  function isValidUrl(text: string): boolean {
+    try {
+      const parsed = new URL(text);
+      return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  }
 
   function reset(): void {
     url = '';
@@ -88,6 +127,7 @@
           <input
             id="share-url"
             type="url"
+            bind:this={urlInput}
             bind:value={url}
             placeholder="https://example.com/article"
             required

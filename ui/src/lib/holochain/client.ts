@@ -1,12 +1,13 @@
 /**
  * ShareFeed Holochain client.
  * Provides typed methods for all zome calls.
+ * Supports multi-cell operations via cellId parameter.
  */
 
 import type {
   AppClient,
-  AppCallZomeRequest,
   Record as HcRecord,
+  CellId,
 } from '@holochain/client';
 import type {
   ShareItem,
@@ -27,11 +28,35 @@ export const ROLE_NAME = 'sharefeed';
 export const ZOME_NAME = 'sharefeed';
 
 export class ShareFeedClient {
+  private _cellId: CellId | null = null;
+
   constructor(
     public client: AppClient,
     public roleName: string = ROLE_NAME,
     public zomeName: string = ZOME_NAME
   ) {}
+
+  /**
+   * Get the current cell ID.
+   */
+  get cellId(): CellId | null {
+    return this._cellId;
+  }
+
+  /**
+   * Set the cell ID for multi-network support.
+   * All zome calls will use this cell.
+   */
+  setCellId(cellId: CellId | null): void {
+    this._cellId = cellId;
+  }
+
+  /**
+   * Check if a cell is set.
+   */
+  hasCellId(): boolean {
+    return this._cellId !== null;
+  }
 
   // ========== ShareItem Operations ==========
 
@@ -106,12 +131,22 @@ export class ShareFeedClient {
   // ========== Private Helper ==========
 
   private async callZome<T>(fnName: string, payload: unknown): Promise<T> {
-    const req: AppCallZomeRequest = {
+    // If a cell ID is set, use it directly; otherwise use role_name
+    if (this._cellId) {
+      return await this.client.callZome({
+        cell_id: this._cellId,
+        zome_name: this.zomeName,
+        fn_name: fnName,
+        payload,
+      });
+    }
+
+    // Fallback to role_name (for single-network compatibility)
+    return await this.client.callZome({
       role_name: this.roleName,
       zome_name: this.zomeName,
       fn_name: fnName,
       payload,
-    };
-    return await this.client.callZome(req);
+    });
   }
 }

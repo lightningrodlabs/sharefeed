@@ -1,20 +1,24 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { FeedList, AccessibilityPanel, ShareForm, ProfileButton, ProfileDialog } from '$lib/components';
-  import { sharesStore, settingsStore, profilesStore, initSharesStore } from '$lib/stores';
+  import { FeedList, AccessibilityPanel, ShareForm, ProfileButton, ProfileDialog, NetworkModal, NetworkSwitcher } from '$lib/components';
+  import { sharesStore, settingsStore, profilesStore, initSharesStore, initNetworksStore } from '$lib/stores';
   import '@holochain-open-dev/profiles/dist/elements/profiles-context.js';
 
   let showSettings = false;
   let showShareForm = false;
   let showProfileDialog = false;
+  let showNetworkModal = false;
+  let networkModalMode: 'create' | 'join' = 'create';
 
   // Subscribe to settings store values
   $: fontSize = $settingsStore.fontSize;
   $: highContrast = $settingsStore.highContrast;
   $: reducedMotion = $settingsStore.reducedMotion;
 
-  onMount(() => {
-    initSharesStore();
+
+  onMount(async () => {
+    await initSharesStore();
+    await initNetworksStore();
   });
 
   async function handleRefresh(): Promise<void> {
@@ -23,6 +27,26 @@
 
   function handleShareCreated(): void {
     showShareForm = false;
+  }
+
+  function handleCreateNetwork(): void {
+    networkModalMode = 'create';
+    showNetworkModal = true;
+  }
+
+  function handleJoinNetwork(): void {
+    networkModalMode = 'join';
+    showNetworkModal = true;
+  }
+
+  async function handleNetworkCreated(): Promise<void> {
+    // Refresh shares for the new network
+    await sharesStore.refresh();
+  }
+
+  async function handleNetworkJoined(): Promise<void> {
+    // Refresh shares for the joined network
+    await sharesStore.refresh();
   }
 </script>
 
@@ -41,6 +65,10 @@
         <p class="tagline">Links from your family and friends</p>
       </div>
       <div class="header-actions">
+        <NetworkSwitcher
+          on:createNetwork={handleCreateNetwork}
+          on:joinNetwork={handleJoinNetwork}
+        />
         <ProfileButton on:click={() => showProfileDialog = true} />
         <button
           type="button"
@@ -88,6 +116,13 @@
     <AccessibilityPanel bind:open={showSettings} on:close={() => showSettings = false} />
     <ShareForm bind:open={showShareForm} on:created={handleShareCreated} on:cancel={() => showShareForm = false} />
     <ProfileDialog bind:open={showProfileDialog} on:close={() => showProfileDialog = false} />
+    <NetworkModal
+      bind:open={showNetworkModal}
+      mode={networkModalMode}
+      on:close={() => showNetworkModal = false}
+      on:created={handleNetworkCreated}
+      on:joined={handleNetworkJoined}
+    />
   </div>
 </div>
 </profiles-context>

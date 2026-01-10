@@ -6,7 +6,7 @@ roles:
   - name: sharefeed
     provisioning:
       strategy: create
-      deferred: false
+      deferred: true
     dna:
       path: "../dnas/sharefeed/workdir/sharefeed.dna"
       modifiers:
@@ -14,4 +14,4 @@ roles:
         properties: ~
         quantum_time: ~
       version: ~
-      clone_limit: 0
+      clone_limit: 999

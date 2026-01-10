@@ -37,6 +37,7 @@ interface SharesStoreState {
   error: string | null;
   connected: boolean;
   isEmpty: boolean;
+  hasNetwork: boolean;
 }
 
 /**
@@ -82,6 +83,7 @@ function toHcShareItem(
 
 /**
  * Creates the shares store with Svelte 3 writable pattern.
+ * Includes per-network caching for instant display when switching networks.
  */
 function createSharesStore() {
   // Internal writable stores
@@ -89,18 +91,24 @@ function createSharesStore() {
   const _loading = writable(true);
   const _error = writable<string | null>(null);
   const _connected = writable(false);
+  const _hasNetwork = writable(false);
+
+  // Per-network cache: cellIdString -> ShareItem[]
+  const _cache = new Map<string, ShareItem[]>();
+  let _currentNetworkId: string | null = null;
 
   let client: ShareFeedClient | null = null;
 
   // Combined derived store for subscription
   const combined: Readable<SharesStoreState> = derived(
-    [_shares, _loading, _error, _connected],
-    ([$shares, $loading, $error, $connected]) => ({
+    [_shares, _loading, _error, _connected, _hasNetwork],
+    ([$shares, $loading, $error, $connected, $hasNetwork]) => ({
       shares: $shares,
       loading: $loading,
       error: $error,
       connected: $connected,
-      isEmpty: !$loading && $shares.length === 0,
+      isEmpty: !$loading && $hasNetwork && $shares.length === 0,
+      hasNetwork: $hasNetwork,
     })
   );
 
@@ -109,13 +117,13 @@ function createSharesStore() {
 
     _loading.set(true);
     _error.set(null);
+    _hasNetwork.set(false);
 
     try {
       client = await connect();
       _connected.set(true);
-
-      // Load initial shares
-      await refresh();
+      // Don't load shares here - wait for network to be set
+      // The networks store will trigger a refresh when a network is selected
     } catch (err) {
       _error.set(err instanceof Error ? err.message : 'Failed to connect to Holochain');
       console.error('Failed to initialize shares store:', err);
@@ -125,19 +133,116 @@ function createSharesStore() {
     }
   }
 
-  async function refresh(): Promise<void> {
+  /**
+   * Switch to a network and load its shares.
+   * If cached shares exist, they're displayed immediately while fresh data loads.
+   */
+  async function switchNetwork(cellIdString: string): Promise<void> {
     if (!client) {
-      // Try to get existing client
       client = getClient();
       if (!client) return;
     }
 
+    _currentNetworkId = cellIdString;
+    _hasNetwork.set(true);
+    _error.set(null);
+
+    // Check if we have cached shares for this network
+    const cachedShares = _cache.get(cellIdString);
+    if (cachedShares) {
+      // Immediately display cached shares
+      _shares.set(cachedShares);
+      // Then refresh in the background (don't show loading state)
+      refreshInBackground(cellIdString);
+    } else {
+      // No cache - show loading and fetch
+      _loading.set(true);
+      _shares.set([]);
+      await fetchAndCacheShares(cellIdString);
+    }
+  }
+
+  /**
+   * Fetch shares and update cache. Used for initial load.
+   */
+  async function fetchAndCacheShares(cellIdString: string): Promise<void> {
+    if (!client) return;
+
+    try {
+      const shareInfos = await client.getRecentShares();
+      const shares = shareInfos.map(toShareItem);
+
+      // Only update if we're still on the same network
+      if (_currentNetworkId === cellIdString) {
+        _shares.set(shares);
+        _loading.set(false);
+      }
+
+      // Always update cache
+      _cache.set(cellIdString, shares);
+    } catch (err) {
+      if (_currentNetworkId === cellIdString) {
+        _error.set(err instanceof Error ? err.message : 'Failed to load shares');
+        _loading.set(false);
+      }
+      console.error('Failed to fetch shares:', err);
+    }
+  }
+
+  /**
+   * Refresh shares in the background without showing loading state.
+   */
+  async function refreshInBackground(cellIdString: string): Promise<void> {
+    if (!client) return;
+
+    try {
+      const shareInfos = await client.getRecentShares();
+      const shares = shareInfos.map(toShareItem);
+
+      // Only update if we're still on the same network
+      if (_currentNetworkId === cellIdString) {
+        _shares.set(shares);
+      }
+
+      // Always update cache
+      _cache.set(cellIdString, shares);
+    } catch (err) {
+      // Silently fail background refresh - we already have cached data
+      console.error('Background refresh failed:', err);
+    }
+  }
+
+  /**
+   * Refresh shares for the current network.
+   */
+  async function refresh(): Promise<void> {
+    if (!client) {
+      client = getClient();
+      if (!client) return;
+    }
+
+    // Check if client has a cell ID set (meaning we have a network)
+    if (!client.hasCellId()) {
+      _shares.set([]);
+      _hasNetwork.set(false);
+      _loading.set(false);
+      _currentNetworkId = null;
+      return;
+    }
+
+    _hasNetwork.set(true);
     _loading.set(true);
     _error.set(null);
 
     try {
       const shareInfos = await client.getRecentShares();
-      _shares.set(shareInfos.map(toShareItem));
+      const shares = shareInfos.map(toShareItem);
+      _shares.set(shares);
+
+      // Update cache if we have a network ID
+      if (_currentNetworkId) {
+        _cache.set(_currentNetworkId, shares);
+      }
     } catch (err) {
       _error.set(err instanceof Error ? err.message : 'Failed to load shares');
       console.error('Failed to refresh shares:', err);
@@ -190,6 +295,7 @@ function createSharesStore() {
     // Methods
     init,
     refresh,
+    switchNetwork,
     createShare,
     deleteShare,
     isConnected: checkConnected,

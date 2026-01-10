@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { ShareMetadata, ShareItem, ExtensionMessage, ConnectionStatus } from '@/types';
+  import type { ShareMetadata, ShareItem, ExtensionMessage, ConnectionStatus, NetworkInfo } from '@/types';
   import { getHolochainSettings, saveHolochainSettings, type HolochainSettings } from '@/storage/holochain-storage';
 
   // State using Svelte 5 runes
@@ -10,6 +10,11 @@
   let metadata = $state<ShareMetadata | null>(null);
   let recentShares = $state<ShareItem[]>([]);
   let connectionStatus = $state<ConnectionStatus | null>(null);
+
+  // Network state
+  let networks = $state<NetworkInfo[]>([]);
+  let activeNetwork = $derived(networks.find(n => n.isActive) || null);
+  let showNetworkSelector = $state(false);
 
   // Form state
   let customNote = $state('');
@@ -22,11 +27,39 @@
     loadCurrentTabMetadata();
     loadRecentShares();
     loadSettings();
+    loadNetworks();
   });
 
   async function loadSettings() {
     settings = await getHolochainSettings();
     await checkConnectionStatus();
+  }
+
+  async function loadNetworks() {
+    try {
+      const response = await chrome.runtime.sendMessage({ type: 'GET_NETWORKS' });
+      if (response?.type === 'NETWORKS_RESPONSE') {
+        networks = response.payload;
+      }
+    } catch (err) {
+      console.error('Failed to load networks:', err);
+    }
+  }
+
+  async function selectNetwork(cellIdString: string) {
+    try {
+      await chrome.runtime.sendMessage({ type: 'SET_ACTIVE_NETWORK', payload: cellIdString });
+      // Update local state
+      networks = networks.map(n => ({
+        ...n,
+        isActive: n.cellIdString === cellIdString
+      }));
+      showNetworkSelector = false;
+      // Reload shares for the new network
+      await loadRecentShares();
+    } catch (err) {
+      console.error('Failed to set active network:', err);
+    }
   }
 
   async function checkConnectionStatus() {
@@ -161,14 +194,52 @@
 <main>
   <header>
     <h1>ShareFeed</h1>
-    {#if connectionStatus}
-      <button class="connection-status" class:connected={connectionStatus.holochainAvailable} onclick={() => showSettings = !showSettings}>
-        <span class="status-dot"></span>
-        <span class="status-text">
-          {connectionStatus.holochainAvailable ? 'Holochain' : 'Local'}
-        </span>
-      </button>
-    {/if}
+    <div class="header-actions">
+      {#if networks.length > 0 && connectionStatus?.holochainAvailable}
+        <div class="network-selector">
+          <button class="network-button" onclick={() => showNetworkSelector = !showNetworkSelector}>
+            <span class="network-icon">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z" />
+              </svg>
+            </span>
+            <span class="network-name">{activeNetwork?.name || 'Select'}</span>
+            <span class="dropdown-arrow" class:open={showNetworkSelector}>
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </span>
+          </button>
+          {#if showNetworkSelector}
+            <div class="network-dropdown">
+              {#each networks as network}
+                <button
+                  class="network-option"
+                  class:active={network.isActive}
+                  onclick={() => selectNetwork(network.cellIdString)}
+                >
+                  <span>{network.name}</span>
+                  {#if network.isActive}
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  {/if}
+                </button>
+              {/each}
+            </div>
+          {/if}
+        </div>
+      {/if}
+      {#if connectionStatus}
+        <button class="connection-status" class:connected={connectionStatus.holochainAvailable} onclick={() => showSettings = !showSettings}>
+          <span class="status-dot"></span>
+          <span class="status-text">
+            {connectionStatus.holochainAvailable ? 'HC' : 'Local'}
+          </span>
+        </button>
+      {/if}
+    </div>
   </header>
 
   {#if showSettings}
@@ -327,6 +398,94 @@
   .connection-status:hover {
     opacity: 0.8;
     cursor: pointer;
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .network-selector {
+    position: relative;
+  }
+
+  .network-button {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    background: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 11px;
+    color: #374151;
+    cursor: pointer;
+  }
+
+  .network-button:hover {
+    background: #e5e7eb;
+  }
+
+  .network-icon {
+    color: #6366f1;
+  }
+
+  .network-name {
+    max-width: 80px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .dropdown-arrow {
+    color: #6b7280;
+    transition: transform 0.15s;
+  }
+
+  .dropdown-arrow.open {
+    transform: rotate(180deg);
+  }
+
+  .network-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    min-width: 150px;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    z-index: 50;
+    overflow: hidden;
+  }
+
+  .network-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 8px 10px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    color: #374151;
+    text-align: left;
+  }
+
+  .network-option:hover {
+    background: #f3f4f6;
+  }
+
+  .network-option.active {
+    background: #eef2ff;
+    color: #4f46e5;
+  }
+
+  .network-option svg {
+    color: #6366f1;
+    flex-shrink: 0;
   }
 
   .settings-panel {

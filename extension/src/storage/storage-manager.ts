@@ -3,7 +3,7 @@
  * Uses Holochain when available, falls back to local storage otherwise.
  */
 
-import type { ShareItem, StorageAdapter, GetSharesOptions } from '@/types';
+import type { ShareItem, StorageAdapter, GetSharesOptions, NetworkInfo } from '@/types';
 import { getLocalStorageAdapter } from './local-storage';
 import {
   getHolochainStorageAdapter,
@@ -144,6 +144,31 @@ export class StorageManager implements StorageAdapter {
     this.lastHolochainCheck = 0;
     this.holochainAvailable = false;
     this.holochainAdapter = null;
+  }
+
+  /**
+   * Get all networks from Holochain.
+   * Returns empty array if Holochain is not available.
+   */
+  async getNetworks(): Promise<NetworkInfo[]> {
+    if (!this.holochainAdapter) {
+      this.holochainAdapter = await getHolochainStorageAdapter();
+    }
+
+    if (this.holochainAvailable && this.holochainAdapter) {
+      return this.holochainAdapter.getNetworks();
+    }
+
+    return [];
+  }
+
+  /**
+   * Set the active network for Holochain operations.
+   */
+  setActiveNetwork(cellIdString: string): void {
+    if (this.holochainAdapter) {
+      this.holochainAdapter.setActiveCellId(cellIdString);
+    }
   }
 }
 

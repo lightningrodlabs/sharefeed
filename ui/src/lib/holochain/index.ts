@@ -13,6 +13,16 @@ export {
   inWeaveContext,
   APP_ID,
 } from './connection';
+export {
+  createNetwork,
+  joinNetwork,
+  getNetworks,
+  disableNetwork,
+  enableNetwork,
+  updateNetworkName,
+  cellIdToString,
+  cellIdFromString,
+} from './networks';
 export type {
   ShareItem,
   ShareItemInfo,

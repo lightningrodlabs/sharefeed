@@ -148,6 +148,14 @@ async function handleMessage(message: ExtensionMessage): Promise<ExtensionMessag
       storage.resetConnection();
       return { type: 'CONNECTION_RESET' };
 
+    case 'GET_NETWORKS':
+      const networks = await storage.getNetworks();
+      return { type: 'NETWORKS_RESPONSE', payload: networks };
+
+    case 'SET_ACTIVE_NETWORK':
+      storage.setActiveNetwork(message.payload);
+      return { type: 'ACTIVE_NETWORK_SET', payload: message.payload };
+
     default:
       throw new Error(`Unknown message type: ${(message as ExtensionMessage).type}`);
   }

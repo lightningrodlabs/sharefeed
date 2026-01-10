@@ -1,18 +1,15 @@
 <script lang="ts">
-  import type { ShareItem } from '$lib/types';
   import { sharesStore, settingsStore } from '$lib/stores';
   import ShareCard from './ShareCard.svelte';
-  import { createEventDispatcher } from 'svelte';
 
   export let onDelete: ((id: string) => void) | undefined = undefined;
-
-  const dispatch = createEventDispatcher();
 
   // Subscribe to store values
   $: shares = $sharesStore.shares;
   $: loading = $sharesStore.loading;
   $: error = $sharesStore.error;
   $: isEmpty = $sharesStore.isEmpty;
+  $: hasNetwork = $sharesStore.hasNetwork;
   $: highContrast = $settingsStore.highContrast;
 
   async function handleRefresh(): Promise<void> {
@@ -45,6 +42,16 @@
       <button type="button" on:click={handleRefresh} class="btn btn-primary">
         Try Again
       </button>
+    </div>
+  {:else if !hasNetwork}
+    <div class="no-network-state">
+      <svg viewBox="0 0 24 24" width="64" height="64" fill="none" stroke="currentColor" stroke-width="1.5">
+        <circle cx="12" cy="12" r="10" />
+        <path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z" />
+      </svg>
+      <h2>Get started</h2>
+      <p>Create a new sharing network or join an existing one to start sharing links with your family and friends.</p>
+      <p class="hint">Use the network selector in the header to create or join a network.</p>
     </div>
   {:else if isEmpty}
     <div class="empty-state">
@@ -86,7 +93,8 @@
 
   .loading-state,
   .error-state,
-  .empty-state {
+  .empty-state,
+  .no-network-state {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -127,27 +135,35 @@
     font-size: 18px;
   }
 
-  .empty-state svg {
+  .empty-state svg,
+  .no-network-state svg {
     margin-bottom: 24px;
     stroke: var(--text-muted);
   }
 
-  .empty-state h2 {
+  .empty-state h2,
+  .no-network-state h2 {
     margin: 0 0 8px 0;
     font-size: 24px;
     font-weight: 600;
   }
 
-  .empty-state p {
+  .empty-state p,
+  .no-network-state p {
     margin: 0 0 8px 0;
     font-size: 18px;
     color: var(--text-muted);
   }
 
-  .empty-state .hint {
+  .empty-state .hint,
+  .no-network-state .hint {
     font-size: 16px;
     color: var(--text-muted);
     opacity: 0.8;
+  }
+
+  .no-network-state svg {
+    stroke: var(--primary-color);
   }
 
   .shares-list {

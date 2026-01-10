@@ -17,6 +17,7 @@
     "@holochain-open-dev/elements": "^0.600.0",
     "@msgpack/msgpack": "^2.8.0",
     "@theweave/api": "^0.6.3",
+    "diceware-word": "^1.0.0",
     "libsodium-wrappers": "0.7.15"
   },
   "devDependencies": {

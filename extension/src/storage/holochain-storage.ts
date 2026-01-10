@@ -10,13 +10,19 @@ import {
   AdminWebsocket,
   type AppClient,
   type AppWebsocketConnectionOptions,
+  type CellId,
+  type ClonedCell,
   encodeHashToBase64,
 } from '@holochain/client';
-import type { ShareItem, StorageAdapter, GetSharesOptions } from '@/types';
+import type { ShareItem, StorageAdapter, GetSharesOptions, NetworkInfo } from '@/types';
 
 const APP_ID = 'sharefeed';
 const ROLE_NAME = 'sharefeed';
 const ZOME_NAME = 'sharefeed';
+
+// Local storage key for active network
+const ACTIVE_NETWORK_KEY = 'sharefeed_active_network_ext';
+const NETWORKS_CACHE_KEY = 'sharefeed_networks_cache';
 
 // Settings storage key
 const SETTINGS_KEY = 'sharefeed_holochain_settings';
@@ -60,12 +66,62 @@ interface ShareItemInfo {
 /**
  * Holochain storage adapter using @holochain/client.
  * Connects to the conductor on each operation (MV3 service worker constraint).
+ * Supports multiple networks via cell ID switching.
  */
 export class HolochainStorageAdapter implements StorageAdapter {
   private settings: HolochainSettings;
+  private activeCellId: CellId | null = null;
 
   constructor(settings: HolochainSettings = DEFAULT_SETTINGS) {
     this.settings = settings;
+  }
+
+  /**
+   * Convert CellId to string for storage.
+   */
+  private cellIdToString(cellId: CellId): string {
+    return `${encodeHashToBase64(cellId[0])}:${encodeHashToBase64(cellId[1])}`;
+  }
+
+  /**
+   * Convert string back to CellId.
+   */
+  private cellIdFromString(cellIdString: string): CellId {
+    const [dnaHash, agentPubKey] = cellIdString.split(':');
+    const dnaBytes = Uint8Array.from(atob(dnaHash), c => c.charCodeAt(0));
+    const agentBytes = Uint8Array.from(atob(agentPubKey), c => c.charCodeAt(0));
+    return [dnaBytes, agentBytes];
+  }
+
+  /**
+   * Set the active cell for operations.
+   */
+  setActiveCellId(cellIdString: string): void {
+    this.activeCellId = this.cellIdFromString(cellIdString);
+    // Persist to storage
+    chrome.storage.local.set({ [ACTIVE_NETWORK_KEY]: cellIdString });
+  }
+
+  /**
+   * Get the active cell ID string.
+   */
+  async getActiveCellIdString(): Promise<string | null> {
+    try {
+      const result = await chrome.storage.local.get(ACTIVE_NETWORK_KEY);
+      return result[ACTIVE_NETWORK_KEY] || null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Restore active cell from storage.
+   */
+  async restoreActiveCellId(): Promise<void> {
+    const cellIdString = await this.getActiveCellIdString();
+    if (cellIdString) {
+      this.activeCellId = this.cellIdFromString(cellIdString);
+    }
   }
 
   /**
@@ -135,6 +191,7 @@ export class HolochainStorageAdapter implements StorageAdapter {
 
   /**
    * Call a zome function.
+   * Uses active cell ID if set, otherwise falls back to role_name.
    */
   private async callZome<T>(fnName: string, payload: unknown): Promise<T> {
     const client = await this.getClient();
@@ -143,6 +200,17 @@ export class HolochainStorageAdapter implements StorageAdapter {
     }
 
     try {
+      // Use cell_id if active network is set
+      if (this.activeCellId) {
+        return await client.callZome({
+          cell_id: this.activeCellId,
+          zome_name: ZOME_NAME,
+          fn_name: fnName,
+          payload,
+        });
+      }
+
+      // Fallback to role_name (may fail with deferred provisioning if no cells exist)
       return await client.callZome({
         role_name: ROLE_NAME,
         zome_name: ZOME_NAME,
@@ -153,6 +221,73 @@ export class HolochainStorageAdapter implements StorageAdapter {
       // Note: AppWebsocket doesn't have a close method in current API
       // The connection will be cleaned up when the service worker idles
     }
+  }
+
+  /**
+   * Get all networks (cloned cells) from the conductor.
+   */
+  async getNetworks(): Promise<NetworkInfo[]> {
+    const client = await this.getClient();
+    if (!client) return [];
+
+    try {
+      const appInfo = await client.appInfo();
+      if (!appInfo) return [];
+
+      const cells = appInfo.cell_info[ROLE_NAME] || [];
+      const activeCellIdString = await this.getActiveCellIdString();
+
+      // Load cached network names
+      const cachedNames = await this.loadNetworkNamesCache();
+
+      const networks: NetworkInfo[] = [];
+
+      for (const cell of cells) {
+        if ('cloned' in cell) {
+          const cloned = cell.cloned as ClonedCell;
+          const cellId = cloned.cell_id;
+          const cellIdString = this.cellIdToString(cellId);
+
+          networks.push({
+            cellIdString,
+            name: cachedNames[cellIdString] || cloned.name || 'Shared Feed',
+            isActive: cellIdString === activeCellIdString,
+          });
+        }
+      }
+
+      // Auto-select first network if none active
+      if (networks.length > 0 && !networks.some(n => n.isActive)) {
+        networks[0].isActive = true;
+        this.setActiveCellId(networks[0].cellIdString);
+      }
+
+      return networks;
+    } catch (error) {
+      console.error('[Holochain] Failed to get networks:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Load network names cache from storage.
+   */
+  private async loadNetworkNamesCache(): Promise<Record<string, string>> {
+    try {
+      const result = await chrome.storage.local.get(NETWORKS_CACHE_KEY);
+      return result[NETWORKS_CACHE_KEY] || {};
+    } catch {
+      return {};
+    }
+  }
+
+  /**
+   * Update network name in cache.
+   */
+  async updateNetworkName(cellIdString: string, name: string): Promise<void> {
+    const cache = await this.loadNetworkNamesCache();
+    cache[cellIdString] = name;
+    await chrome.storage.local.set({ [NETWORKS_CACHE_KEY]: cache });
   }
 
   /**
